@@ -42,7 +42,7 @@ class SolverAgent(BaseAgent):
             if self.memory_retriever:
                 similar_problems = self.memory_retriever.find_similar(
                     problem.get('problem_text', ''),
-                    k=3
+                    top_k=3
                 )
             
             # Format context

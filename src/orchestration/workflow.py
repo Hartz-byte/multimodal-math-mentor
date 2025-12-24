@@ -116,7 +116,8 @@ class MathMentorWorkflow:
             }
             
             # Execute graph
-            result = await asyncio.to_thread(self.graph.invoke, state)
+            # Execute graph
+            result = await self.graph.ainvoke(state)
             
             # Store in memory only if successful? Or always?
             # Store if success or if we need HITL (to resume later?)

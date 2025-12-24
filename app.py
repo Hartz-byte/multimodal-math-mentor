@@ -124,6 +124,7 @@ with col_input:
                         input_mode="text"
                     ))
                     st.session_state.current_result = result
+                    st.session_state.feedback_given = False
             else:
                 st.warning("Please enter a problem")
     
@@ -164,6 +165,7 @@ with col_input:
                                 ocr_confidence=ocr_result['confidence']
                             ))
                             st.session_state.current_result = result
+                            st.session_state.feedback_given = False
     
     elif input_mode == "🎙️ Audio":
         audio_file = st.file_uploader(
@@ -201,22 +203,13 @@ with col_input:
                                 asr_confidence=0.9
                             ))
                             st.session_state.current_result = result
+                            st.session_state.feedback_given = False
 
 # Output area
 with col_output:
     if 'current_result' in st.session_state:
         result = st.session_state.current_result
         
-        st.markdown("## 📊 Solution")
-        
-        # Tabs for different views
-        tab_answer, tab_steps, tab_context, tab_trace = st.tabs(
-            ["✅ Answer", "📖 Steps", "📚 Context", "🔍 Trace"]
-        )
-        
-        with tab_answer:
-            st.subheader("Final Answer")
-            answer = result.get('answer', 'No answer generated')
         status = result.get('status', 'completed')
         
         # --- HITL: Ambiguity Handler ---
@@ -234,6 +227,7 @@ with col_output:
                         input_path=result.get('input_path')
                     ))
                     st.session_state.current_result = new_result
+                    st.session_state.feedback_given = False
                     st.rerun()
                     
         # --- HITL: Verification Handler ---
@@ -252,6 +246,7 @@ with col_output:
                     st.session_state.memory_store.store_solution(result)
                     st.success("Approved! solution learned.")
                     st.session_state.current_result['status'] = 'completed'
+                    st.session_state.feedback_given = False
                     st.rerun()
             
             with col_reject:
@@ -294,21 +289,26 @@ with col_output:
             st.divider()
             
             # Feedback
+            if 'feedback_given' not in st.session_state:
+                st.session_state.feedback_given = False
+
             col1, col2, col3 = st.columns([1, 1, 1])
             with col1:
-                if st.button("✅ Correct", use_container_width=True):
+                if st.button("✅ Correct", use_container_width=True, disabled=st.session_state.feedback_given):
                     st.session_state.memory_store.store_feedback(
                         result.get('id'),
                         'correct'
                     )
+                    st.session_state.feedback_given = True
                     st.success("Feedback recorded!")
+                    st.rerun()
             
             with col2:
-                if st.button("❌ Incorrect", use_container_width=True):
+                if st.button("❌ Incorrect", use_container_width=True, disabled=st.session_state.feedback_given):
                     st.session_state.show_feedback_form = True
             
             with col3:
-                if st.button("💭 Unclear", use_container_width=True):
+                if st.button("💭 Unclear", use_container_width=True, disabled=st.session_state.feedback_given):
                     st.session_state.show_feedback_form = True
             
             if st.session_state.get('show_feedback_form'):
@@ -321,8 +321,10 @@ with col_output:
                             'incorrect',
                             comment
                         )
+                        st.session_state.feedback_given = True
                         st.success("Thank you for your feedback!")
                         st.session_state.show_feedback_form = False
+                        st.rerun()
     
     else:
         st.info("👈 Enter a problem on the left to get started!")
