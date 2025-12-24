@@ -12,7 +12,7 @@ class ImageProcessor:
     def __init__(self, use_gpu: bool = False):
         import torch
         self.use_gpu = use_gpu or torch.cuda.is_available()
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', use_gpu=self.use_gpu)
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', device=('gpu' if self.use_gpu else 'cpu'))
 
     def process_image(self, image_path: str) -> Dict:
         """

@@ -1,5 +1,4 @@
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-# pip install paddlepaddle-gpu --index-url https://mirror.baidu.com/pypi/simple
 
 
 # Core Framework
@@ -16,7 +15,7 @@ chromadb==0.5.23
 faiss-cpu==1.8.0
 
 # Image & Audio Processing
-paddlepaddle
+paddlepaddle-gpu==2.6.2
 paddleocr==2.8.1
 opencv-python==4.9.0.80
 opencv-contrib-python==4.9.0.80
