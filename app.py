@@ -273,15 +273,15 @@ with col_output:
                 st.markdown(explanation)
             
             with tab_context:
-                st.subheader("Retrieved Context")
                 sources = result.get('sources', [])
                 if sources:
+                    st.subheader("Retrieved Context")
                     for i, source in enumerate(sources, 1):
                         with st.expander(f"Source {i}: {source.get('source', 'Unknown')}"):
                             st.markdown(source.get('content', 'No content'))
                             st.caption(f"Relevance: {source.get('relevance', 0):.2f}")
                 else:
-                    st.info("No external context used.")
+                    st.info("No external knowledge base documents were relevant for this problem. The solution was generated using internal mathematical logic.")
             
             with tab_trace:
                 st.json(result.get('agents', {}))
@@ -300,7 +300,6 @@ with col_output:
                         'correct'
                     )
                     st.session_state.feedback_given = True
-                    st.success("Feedback recorded!")
                     st.rerun()
             
             with col2:
@@ -322,9 +321,11 @@ with col_output:
                             comment
                         )
                         st.session_state.feedback_given = True
-                        st.success("Thank you for your feedback!")
                         st.session_state.show_feedback_form = False
                         st.rerun()
+
+            if st.session_state.feedback_given:
+                st.success("Analysis Feedback stored! Thank you for helping improve the system.")
     
     else:
         st.info("👈 Enter a problem on the left to get started!")
@@ -338,4 +339,4 @@ with col_output:
 
 st.divider()
 st.markdown("---")
-st.markdown("Built with ❤️ by AI Engineer | Powered by LangGraph, PaddleOCR, Whisper, Ollama")
+st.markdown("Built by an AI/ML Engineer | Harsh Gupta")
