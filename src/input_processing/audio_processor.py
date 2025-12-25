@@ -9,7 +9,8 @@ class AudioProcessor:
 
     def __init__(self, model_name: str = "base"):
         import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cpu"
         self.model = whisper.load_model(model_name, device=device)
 
     def process_audio(self, audio_path: str) -> Dict:
