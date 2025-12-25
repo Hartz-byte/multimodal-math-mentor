@@ -107,14 +107,34 @@ class MemoryStore:
                 # Fetch full details from SQL for better context
                 session = self.Session()
                 db_prob = session.query(SolvedProblem).filter_by(id=doc.metadata['id']).first()
-                solution_text = db_prob.solution if db_prob else "Solution not found"
+                if not db_prob:
+                    session.close()
+                    continue
+
+                solution_text = db_prob.solution
+                is_valid = True
+                
+                # Check feedback
+                if db_prob.user_feedback:
+                    try:
+                        fb = json.loads(db_prob.user_feedback)
+                        if fb.get('feedback') == 'incorrect':
+                            # If incorrect, check if corrected solution is provided in comments
+                            if fb.get('comment') and len(fb.get('comment')) > 10: # Heuristic for solution
+                                solution_text = f"Corrected Solution: {fb.get('comment')}"
+                            else:
+                                is_valid = False # Skip this result if incorrect and no correction
+                    except:
+                        pass
+                
                 session.close()
 
-                formatted.append({
-                    'problem': doc.page_content,
-                    'solution': solution_text,
-                    'similarity': 1 - score
-                })
+                if is_valid:
+                    formatted.append({
+                        'problem': doc.page_content,
+                        'solution': solution_text,
+                        'similarity': 1 - score
+                    })
             return formatted
         except Exception as e:
             logger.error(f"History search error: {str(e)}")
@@ -135,3 +155,62 @@ class MemoryStore:
                 logger.info(f"Stored feedback for {problem_id}")
         except Exception as e:
             logger.error(f"Feedback storage error: {str(e)}")
+
+    def get_statistics(self) -> Dict:
+        """Get learning statistics"""
+        try:
+            session = self.Session()
+            problems = session.query(SolvedProblem).all()
+            
+            total = len(problems)
+            if total == 0:
+                return {
+                    'problems_solved': 0,
+                    'success_rate': 0,
+                    'avg_confidence': 0,
+                    'correct_count': 0,
+                    'incorrect_count': 0
+                }
+            
+            # Calculate metrics based on Feedback
+            correct_count = 0
+            incorrect_count = 0
+            total_confidence = 0
+            
+            for p in problems:
+                total_confidence += p.confidence or 0
+                if p.user_feedback:
+                    try:
+                        fb = json.loads(p.user_feedback)
+                        if fb.get('feedback') == 'correct':
+                            correct_count += 1
+                        elif fb.get('feedback') == 'incorrect':
+                            incorrect_count += 1
+                    except:
+                        pass
+            
+            # Use feedback count for success rate logic if feedback exists, 
+            # otherwise maybe fallback or just show 0 if no feedback given?
+            # User asked: "updated based on the feedbacks and nothing else"
+            # So if no feedback, success rate is 0? Or should we assume 'success' from workflow?
+            # User said "based on the feedbacks and nothing else".
+            
+            feedback_total = correct_count + incorrect_count
+            success_rate = (correct_count / feedback_total * 100) if feedback_total > 0 else 0
+            
+            return {
+                'problems_solved': total,
+                'success_rate': success_rate,
+                'avg_confidence': total_confidence / total,
+                'correct_count': correct_count,
+                'incorrect_count': incorrect_count
+            }
+        except Exception as e:
+            logger.error(f"Stats error: {str(e)}")
+            return {
+                'problems_solved': 0,
+                'success_rate': 0,
+                'avg_confidence': 0,
+                'correct_count': 0,
+                'incorrect_count': 0
+            }

@@ -1,3 +1,6 @@
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "false"
+
 from pathlib import Path
 from typing import List, Dict
 from langchain.text_splitter import RecursiveCharacterTextSplitter

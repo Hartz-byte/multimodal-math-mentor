@@ -31,26 +31,41 @@ class ImageProcessor:
         """
         try:
             # Read image
-            image = cv2.imread(image_path)
+            image_path_str = str(image_path)
+            image = cv2.imread(image_path_str)
             if image is None:
                 return {'error': 'Could not read image', 'confidence': 0}
             
             # Perform OCR
             results = self.ocr.ocr(image, cls=True)
             
-            # Extract text and confidence
             extracted_text = ""
             confidences = []
             
-            for line in results:
-                for word_info in line:
-                    text = word_info
-                    conf = word_info
-                    extracted_text += text + " "
-                    confidences.append(conf)
+            # Results structure: [[ [box], (text, confidence) ], ... ] for single image
+            # Sometimes wrapped in another list: [ [result_for_img] ]
+            # PaddleOCR returns a list of result lists (one per image).
+            if results and len(results) > 0:
+                # Get result for the first (and only) image
+                res = results[0]
+                
+                if res: # If text was detected
+                    for line in res:
+                        # line format: [box_coords, (text, confidence)]
+                        # box_coords = line[0]
+                        text_info = line[1]
+                        
+                        text = text_info[0]
+                        conf = text_info[1]
+                        
+                        extracted_text += text + " "
+                        confidences.append(conf)
             
             avg_confidence = np.mean(confidences) if confidences else 0
             
+            if not extracted_text:
+                return {'text': '', 'confidence': 0, 'needs_review': True, 'error': 'No text found'}
+
             return {
                 'text': extracted_text.strip(),
                 'confidence': avg_confidence,

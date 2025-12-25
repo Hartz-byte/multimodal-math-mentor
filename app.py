@@ -80,18 +80,22 @@ with st.sidebar:
     st.divider()
     
     # Statistics
+    stats = st.session_state.memory_store.get_statistics()
+    
     st.markdown("### 📊 Statistics")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
-        st.metric("Problems Solved", len(st.session_state.history))
+        st.metric("Problems Solved", stats['problems_solved'])
     with col2:
-        success_rate = (sum(1 for h in st.session_state.history if h.get('success')) 
-                       / len(st.session_state.history) * 100 if st.session_state.history else 0)
-        st.metric("Success Rate", f"{success_rate:.0f}%")
+        st.metric("Avg Confidence", f"{stats['avg_confidence']:.1%}")
+        
+    col3, col4 = st.columns(2)
     with col3:
-        avg_confidence = (sum(h.get('confidence', 0) for h in st.session_state.history) 
-                         / len(st.session_state.history) if st.session_state.history else 0)
-        st.metric("Avg Confidence", f"{avg_confidence:.1%}")
+        st.metric("✅ Correct", stats['correct_count'])
+    with col4:
+        st.metric("❌ Incorrect", stats['incorrect_count'])
+    
+    st.metric("Success Rate (from Feedback)", f"{stats['success_rate']:.0f}%")
     
     st.divider()
     
@@ -136,12 +140,19 @@ with col_input:
         
         if uploaded_image:
             # Display image
-            st.image(uploaded_image, use_column_width=True)
+            st.image(uploaded_image, use_container_width=True)
             
             if st.button("📸 Extract & Solve", key="solve_image", use_container_width=True):
                 with st.spinner("Extracting text from image..."):
                     # Save uploaded file
-                    image_path = f"/tmp/{uploaded_image.name}"
+                    import os
+                    from pathlib import Path
+                    
+                    # Create temp dir if not exists
+                    temp_dir = Path("temp_uploads")
+                    temp_dir.mkdir(exist_ok=True)
+                    
+                    image_path = temp_dir / uploaded_image.name
                     with open(image_path, "wb") as f:
                         f.write(uploaded_image.getbuffer())
                     
@@ -179,7 +190,11 @@ with col_input:
             if st.button("🎤 Transcribe & Solve", key="solve_audio", use_container_width=True):
                 with st.spinner("Transcribing audio..."):
                     # Save audio file
-                    audio_path = f"/tmp/{audio_file.name}"
+                    from pathlib import Path
+                    temp_dir = Path("temp_uploads")
+                    temp_dir.mkdir(exist_ok=True)
+                    
+                    audio_path = temp_dir / audio_file.name
                     with open(audio_path, "wb") as f:
                         f.write(audio_file.getbuffer())
                     
@@ -258,8 +273,8 @@ with col_output:
             st.markdown("## 📊 Solution")
             
             # Tabs for different views
-            tab_answer, tab_steps, tab_context, tab_trace = st.tabs(
-                ["📝 Answer", "step-by-step", "📚 Context", "🕵️ Trace"]
+            tab_answer, tab_steps, tab_trace = st.tabs(
+                ["📝 Answer", "📚 step-by-step", "🕵️ Trace"]
             )
             
             with tab_answer:
@@ -271,17 +286,6 @@ with col_output:
                 st.subheader("Step-by-Step Explanation")
                 explanation = result.get('explanation', 'No explanation available')
                 st.markdown(explanation)
-            
-            with tab_context:
-                sources = result.get('sources', [])
-                if sources:
-                    st.subheader("Retrieved Context")
-                    for i, source in enumerate(sources, 1):
-                        with st.expander(f"Source {i}: {source.get('source', 'Unknown')}"):
-                            st.markdown(source.get('content', 'No content'))
-                            st.caption(f"Relevance: {source.get('relevance', 0):.2f}")
-                else:
-                    st.info("No external knowledge base documents were relevant for this problem. The solution was generated using internal mathematical logic.")
             
             with tab_trace:
                 st.json(result.get('agents', {}))
@@ -338,5 +342,4 @@ with col_output:
                     st.write(item.get('answer', 'No answer'))
 
 st.divider()
-st.markdown("---")
 st.markdown("Built by an AI/ML Engineer | Harsh Gupta")
