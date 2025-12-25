@@ -46,8 +46,8 @@ class SolverAgent(BaseAgent):
                 )
             
             # Format context
-            context = "\\n\\n".join([
-                f"Source {i+1}: {doc['metadata'].get('source', 'Unknown')}\\n{doc['page_content']}"
+            context = "\n\n".join([
+                f"Source {i+1}: {doc['metadata'].get('source', 'Unknown')}\n{doc['page_content']}"
                 for i, doc in enumerate(retrieved_docs)
             ])
             
@@ -58,9 +58,59 @@ class SolverAgent(BaseAgent):
                     f"Problem: {p['problem']}\nSolution: {p['solution']}\n---"
                     for p in similar_problems
                 ])
+                
+            # -- Step 1: Tool Selection --
+            # Aggressively prompt for tool usage
+            tool_prompt = f"""
+            You are a precision math assistant. You MUST use a tool for any calculation or equation solving.
+            Do NOT calculate mentally.
             
-            # Generate solution
-            prompt = f"""You are an expert mathematics tutor. Solve this problem step by step.
+            Problem: "{problem.get('problem_text', '')}"
+            
+            Decide:
+            1. If it implies solving an equation (e.g. "Find x", "Solve for y"), use 'sympy'.
+               Format: "TOOL: sympy | <equation>"
+               Note: Convert "=" to "==" for python if needed, or just write Eq(lhs, rhs). Or simply write the equation string.
+               Example: "TOOL: sympy | x**2 - 5*x + 6 = 0"
+               Example: "TOOL: sympy | x + 3/17 = 17/7"
+            
+            2. If it is pure arithmetic (e.g. "What is 123 * 456?"), use 'python_calc'.
+               Format: "TOOL: python_calc | <expression>"
+               Example: "TOOL: python_calc | 123 * 456"
+            
+            3. ONLY if the problem is purely conceptual (e.g. "What is a circle?"), respond "NO TOOL".
+            
+            Respond with the TOOL string only.
+            """
+            
+            tool_decision = self.llm.invoke(tool_prompt).strip()
+            tool_output = ""
+            tools_used = ['llm', 'rag']
+            
+            if "TOOL:" in tool_decision:
+                try:
+                    # Parse tool call
+                    parts = tool_decision.split("TOOL:")[1].strip().split("|")
+                    tool_name = parts[0].strip()
+                    expression = parts[1].strip()
+                    
+                    if tool_name in self.tools:
+                        result = self.tools[tool_name](expression)
+                        tool_output = f"\n[Tool ({tool_name}) Output]: {result}\n"
+                        tools_used.append(tool_name)
+                    else:
+                        tool_output = f"\n[System]: Tool {tool_name} not found.\n"
+                except Exception as e:
+                    tool_output = f"\n[System]: Tool execution failed: {str(e)}\n"
+
+            # -- Step 2: Final Solution --
+            # Generate solution with tool context
+            prompt = f"""You are an expert mathematics tutor. 
+            
+            IMPORTANT:
+            1. Use the TOOL OUTPUT provided below as the absolute ground truth for the final answer.
+            2. Do not recalculate manually if the tool output is present.
+            3. Build your step-by-step meaningful explanation AROUND the tool's result.
 
 Problem: {problem.get('problem_text', '')}
 Topic: {problem.get('topic', 'unknown')}
@@ -69,10 +119,12 @@ Relevant knowledge:
 {context}
 {examples}
 
+{tool_output}
+
 Provide:
 1. Problem breakdown
 2. Solution strategy
-3. Step-by-step solution
+3. Step-by-step solution (incorporating Tool Result)
 4. Verification
 5. Key insights
 
@@ -89,7 +141,7 @@ Format your response in clear sections."""
                     'solution': response,
                     'steps': solution_steps,
                     'retrieved_docs': retrieved_docs,
-                    'tools_used': ['llm', 'rag']
+                    'tools_used': tools_used
                 },
                 confidence=0.85
             )
@@ -130,12 +182,34 @@ Format your response in clear sections."""
     def _sympy_solver(self, equation: str) -> str:
         """Solve equation symbolically"""
         try:
-            from sympy import symbols, Eq, solve
-            x = symbols('x')
-            sol = solve(equation, x)
+            from sympy import symbols, Eq, solve, sympify
+            
+            # Auto-detect variable
+            # Use 'x' by default, or find the first alphabet char
+            # But let's stick to x, y, z...
+            # Better: let sympify handle it, but we need to define symbols.
+            # A simple approach for this assignment: Assume 'x' is the variable if not specified,
+            # or extract all symbols.
+            
+            # Handle equality "="
+            if "=" in equation:
+                lhs_str, rhs_str = equation.split("=")
+            else:
+                lhs_str, rhs_str = equation, "0"
+            
+            lhs = sympify(lhs_str)
+            rhs = sympify(rhs_str)
+            
+            # Find symbols in the expression
+            free_symbols = lhs.free_symbols.union(rhs.free_symbols)
+            if not free_symbols:
+                return "No variables found"
+            
+            # Solve
+            sol = solve(Eq(lhs, rhs), list(free_symbols))
             return str(sol)
-        except:
-            return "Symbolic solving error"
+        except Exception as e:
+            return f"Symbolic solving error: {str(e)}"
     
     def _numpy_operations(self, operation: str) -> str:
         """Perform numpy operations"""

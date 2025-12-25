@@ -21,26 +21,28 @@ class ParserAgent(BaseAgent):
         input_mode = input_data.get("mode", "text")
 
         prompt = f"""
-Parse this math problem and extract structured information.
-
-Problem:
-{raw_text}
-
-Respond in JSON format:
-{{
-  "problem_text": "cleaned problem statement",
-  "topic": "algebra/probability/calculus/linear_algebra",
-  "subtopic": "specific subtopic",
-  "variables": ["x", "y"],
-  "constraints": ["x > 0"],
-  "operations": ["solve", "simplify", "prove"],
-  "clarity_score": 0.95,
-  "needs_clarification": false,
-  "clarification_message": ""
-}}
-
-Only respond with valid JSON. No markdown.
-""".strip()
+        You are a data extractor. Extract the math problem from the user input.
+        
+        Input:
+        {raw_text}
+        
+        Rules:
+        1. "problem_text" MUST be the EXACT problem from input. Do not paraphrase. Do not invent.
+        2. Identify the topic (algebra, arithmetic, calculus, etc).
+        
+        Respond in JSON format:
+        {{
+          "problem_text": "...",
+          "topic": "...",
+          "subtopic": "...",
+          "variables": ["x"],
+          "constraints": [],
+          "needs_clarification": false,
+          "clarification_message": ""
+        }}
+        
+        Only respond with valid JSON.
+        """.strip()
 
         try:
             response = self.llm.invoke(prompt)
