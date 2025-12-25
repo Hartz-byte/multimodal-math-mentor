@@ -195,14 +195,39 @@ with col_input:
                         # Streamlit file uploader key change might handle that, but let's just make it work first.
                         st.rerun()    
     elif input_mode == "🎙️ Audio":
-        audio_file = st.file_uploader(
-            "Record or upload audio",
-            type=["mp3", "wav", "m4a"]
-        )
+        st.markdown("### Provide Audio Input")
+        tab_upload, tab_record = st.tabs(["📁 Upload File", "🎙️ Record Voice"])
         
+        audio_file = None
+        
+        with tab_upload:
+            uploaded_audio = st.file_uploader(
+                "Upload audio file",
+                type=["mp3", "wav", "m4a"],
+                key="audio_upload"
+            )
+        
+        with tab_record:
+            recorded_audio = st.audio_input("Record your math problem")
+            
+        # prioritize recording if available (new interaction), else upload
+        if recorded_audio:
+            audio_file = recorded_audio
+        elif uploaded_audio:
+            audio_file = uploaded_audio
+            
         if audio_file:
             st.audio(audio_file)
             
+            # Detect audio file change
+            audio_id = audio_file.name # Works for uploaded_file, st.audio_input returns UploadedFile too
+            if 'last_audio_file' not in st.session_state or st.session_state.last_audio_file != audio_id:
+                st.session_state.last_audio_file = audio_id
+                if 'asr_result' in st.session_state:
+                    del st.session_state.asr_result
+                if 'current_result' in st.session_state:
+                    del st.session_state.current_result
+
             if st.button("🎤 Transcribe & Solve", key="solve_audio", use_container_width=True):
                 with st.spinner("Transcribing audio..."):
                     # Save audio file
@@ -212,29 +237,31 @@ with col_input:
                     
                     audio_path = temp_dir / audio_file.name
                     with open(audio_path, "wb") as f:
-                        f.write(audio_file.getbuffer())
+                        f.write(audio_file.read())
                     
                     # Process audio
-                    asr_result = st.session_state.audio_processor.process_audio(audio_path)
-                    
-                    # Show transcript
-                    st.info(f"**Transcript** ({asr_result.get('language', 'en')})")
-                    
-                    transcript = st.text_area(
-                        "Problem transcript (edit if needed)",
-                        value=asr_result.get('text', ''),
-                        height=150
-                    )
-                    
-                    if st.button("✅ Confirm & Solve", use_container_width=True):
-                        with st.spinner("Solving..."):
-                            result = asyncio.run(st.session_state.workflow.solve(
-                                transcript,
-                                input_mode="audio",
-                                asr_confidence=0.9
-                            ))
-                            st.session_state.current_result = result
-                            st.session_state.feedback_given = False
+                    st.session_state.asr_result = st.session_state.audio_processor.process_audio(audio_path)
+            
+            # If transcript exists (persisted)
+            if 'asr_result' in st.session_state and st.session_state.asr_result:
+                st.info(f"**Transcript** ({st.session_state.asr_result.get('language', 'en')})")
+                
+                transcript = st.text_area(
+                    "Problem transcript (edit if needed)",
+                    value=st.session_state.asr_result.get('text', ''),
+                    height=150
+                )
+                
+                if st.button("✅ Confirm & Solve", key="confirm_audio", use_container_width=True):
+                    with st.spinner("Solving..."):
+                        result = asyncio.run(st.session_state.workflow.solve(
+                            transcript,
+                            input_mode="audio",
+                            asr_confidence=st.session_state.asr_result.get('confidence', 0.9)
+                        ))
+                        st.session_state.current_result = result
+                        st.session_state.feedback_given = False
+                        st.rerun()
 
 # Output area
 with col_output:

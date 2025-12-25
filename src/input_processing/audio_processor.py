@@ -27,10 +27,13 @@ class AudioProcessor:
             }
         """
         try:
-            result = self.model.transcribe(audio_path)
+            result = self.model.transcribe(str(audio_path))
+            
+            # Normalize math text
+            final_text = self.normalize_math_phrases(result['text'])
             
             return {
-                'text': result['text'],
+                'text': final_text,
                 'confidence': result.get('confidence', 0.9),
                 'language': result['language'],
                 'raw_result': result
@@ -43,24 +46,37 @@ class AudioProcessor:
     def normalize_math_phrases(self, text: str) -> str:
         """Convert spoken math phrases to mathematical notation"""
         replacements = {
-            'square root of': '√',
-            'pi': 'π',
-            'theta': 'θ',
-            'alpha': 'α',
-            'beta': 'β',
-            'infinity': '∞',
-            'approximately': '≈',
-            'equals': '=',
-            'greater than': '>',
-            'less than': '<',
-            'times': '×',
-            'divided by': '÷',
-            'to the power of': '^',
-            'raised to': '^'
+            ' is equal to ': '=',
+            ' equal to ': '=',
+            ' equals ': '=',
+            ' plus ': '+',
+            ' minus ': '-',
+            ' multiplied by ': '*',
+            ' divided by ': '/',
+            ' over ': '/',
+            ' square root of ': '√',
+            ' pi ': 'π',
+            ' theta ': 'θ',
+            ' alpha ': 'α',
+            ' beta ': 'β',
+            ' infinity ': '∞',
+            ' approximately ': '≈',
+            ' greater than ': '>',
+            ' less than ': '<',
+            ' times ': '*',
+            ' to the power of ': '^',
+            ' raised to ': '^',
+            ' squared': '^2',
+            ' cubed': '^3'
         }
         
-        normalized = text.lower()
+        # Simple case-insensitive replacement
+        # Note: simplistic, might replace non-math usage, but fine for math context
+        normalized = text
         for phrase, symbol in replacements.items():
-            normalized = normalized.replace(phrase, symbol)
+            # efficient case-insensitive replace?
+            # re.sub(phrase, symbol, normalized, flags=re.IGNORECASE) is better
+            import re
+            normalized = re.sub(phrase, symbol, normalized, flags=re.IGNORECASE)
         
-        return normalized
+        return normalized.strip()
