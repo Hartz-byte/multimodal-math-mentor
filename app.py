@@ -139,6 +139,14 @@ with col_input:
         )
         
         if uploaded_image:
+            # Check if file changed
+            if 'last_uploaded_file' not in st.session_state or st.session_state.last_uploaded_file != uploaded_image.name:
+                st.session_state.last_uploaded_file = uploaded_image.name
+                if 'ocr_result' in st.session_state:
+                    del st.session_state.ocr_result
+                if 'current_result' in st.session_state:
+                    del st.session_state.current_result
+            
             # Display image
             st.image(uploaded_image, use_container_width=True)
             
@@ -157,27 +165,35 @@ with col_input:
                         f.write(uploaded_image.getbuffer())
                     
                     # Process image
-                    ocr_result = st.session_state.image_processor.process_image(image_path)
-                    
-                    # Show extracted text
-                    st.info(f"**Extracted Text** (Confidence: {ocr_result['confidence']:.1%})")
-                    
-                    extracted_text = st.text_area(
-                        "Extracted problem (edit if needed)",
-                        value=ocr_result.get('text', ''),
-                        height=150
-                    )
-                    
-                    if st.button("✅ Confirm & Solve", use_container_width=True):
-                        with st.spinner("Solving..."):
-                            result = asyncio.run(st.session_state.workflow.solve(
-                                extracted_text,
-                                input_mode="image",
-                                ocr_confidence=ocr_result['confidence']
-                            ))
-                            st.session_state.current_result = result
-                            st.session_state.feedback_given = False
-    
+                    st.session_state.ocr_result = st.session_state.image_processor.process_image(image_path)
+            
+            # If OCR result exists (persisted in session state)
+            if 'ocr_result' in st.session_state and st.session_state.ocr_result:
+                # Show extracted text
+                st.info(f"**Extracted Text** (Confidence: {st.session_state.ocr_result['confidence']:.1%})")
+                
+                extracted_text = st.text_area(
+                    "Extracted problem (edit if needed)",
+                    value=st.session_state.ocr_result.get('text', ''),
+                    height=150
+                )
+                
+                if st.button("✅ Confirm & Solve", use_container_width=True):
+                    with st.spinner("Solving..."):
+                        result = asyncio.run(st.session_state.workflow.solve(
+                            extracted_text,
+                            input_mode="image",
+                            ocr_confidence=st.session_state.ocr_result['confidence']
+                        ))
+                        st.session_state.current_result = result
+                        st.session_state.feedback_given = False
+                        # Clear OCR result after solving to reset flow? 
+                        # Or keep it? keeping it allows re-solving.
+                        # But typically we want to show result.
+                        # The result is shown in the main area.
+                        # We might want to clear ocr_result if user uploads a new image?
+                        # Streamlit file uploader key change might handle that, but let's just make it work first.
+                        st.rerun()    
     elif input_mode == "🎙️ Audio":
         audio_file = st.file_uploader(
             "Record or upload audio",

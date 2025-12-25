@@ -1,5 +1,5 @@
+# python.exe -m pip install --upgrade pip
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
 
 # Core Framework
 langchain==0.2.15
@@ -15,7 +15,7 @@ chromadb==0.5.23
 faiss-cpu==1.8.0
 
 # Image & Audio Processing
-paddlepaddle-gpu==2.6.2
+paddlepaddle==2.6.2
 paddleocr==2.8.1
 opencv-python==4.9.0.80
 opencv-contrib-python==4.9.0.80

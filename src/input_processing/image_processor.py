@@ -10,9 +10,16 @@ class ImageProcessor:
     """Process images and extract text using PaddleOCR"""
 
     def __init__(self, use_gpu: bool = False):
-        import torch
-        self.use_gpu = use_gpu or torch.cuda.is_available()
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', device=('gpu' if self.use_gpu else 'cpu'))
+        # Force CPU to avoid persistent Windows CUDA/Paddle DLL conflicts
+        self.use_gpu = False 
+        self._init_ocr()
+
+    def _init_ocr(self):
+        try:
+             self.ocr = PaddleOCR(use_angle_cls=True, lang='en', device='cpu')
+        except Exception as e:
+             logger.error(f"Failed to init PaddleOCR: {e}")
+             raise e
 
     def process_image(self, image_path: str) -> Dict:
         """
@@ -36,8 +43,17 @@ class ImageProcessor:
             if image is None:
                 return {'error': 'Could not read image', 'confidence': 0}
             
-            # Perform OCR
-            results = self.ocr.ocr(image, cls=True)
+            # Perform OCR with Fallback
+            try:
+                results = self.ocr.ocr(image, cls=True)
+            except Exception as e:
+                if self.use_gpu:
+                    logger.warning(f"OCR failed with GPU, switching to CPU. Error: {e}")
+                    self.use_gpu = False
+                    self._init_ocr()
+                    results = self.ocr.ocr(image, cls=True)
+                else:
+                    raise e
             
             extracted_text = ""
             confidences = []
