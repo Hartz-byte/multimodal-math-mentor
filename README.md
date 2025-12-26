@@ -14,23 +14,6 @@ An advanced, reliable AI-powered Math Mentor application capable of solving JEE-
 
 ---
 
-## 🛠️ Tech Stack & Models
-
-### Core Frameworks
-*   **Orchestration**: `LangGraph` (for stateful multi-agent workflows).
-*   **LLM Interface**: `LangChain` + `Ollama`.
-*   **UI**: `Streamlit`.
-*   **Database**: `SQLite` (Structured Metadata) + `ChromaDB` (Vector Store).
-
-### Models & Tools
-*   **LLM**: `qwen2.5:1.5b` (**Local Ollama**). chosen for speed and efficiency on local hardware.
-*   **OCR (Image-to-Text)**: `PaddleOCR` (Local CPU mode).
-*   **ASR (Audio-to-Text)**: `OpenAI Whisper` (Base model, Local).
-*   **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`.
-*   **Math Engine**: `SymPy` (Symbolic Python) & `NumPy`.
-
----
-
 ## 🤖 Agent System Architecture
 
 The system uses a directed graph (Graph Architecture) where problems pass through specialized nodes:
@@ -108,6 +91,23 @@ graph TD
     %% Memory Retrieval
     Mem -. "Few-Shot Examples" .-> Solve
 ```
+
+---
+
+## 🛠️ Tech Stack & Models
+
+### Core Frameworks
+*   **Orchestration**: `LangGraph` (for stateful multi-agent workflows).
+*   **LLM Interface**: `LangChain` + `Ollama`.
+*   **UI**: `Streamlit`.
+*   **Database**: `SQLite` (Structured Metadata) + `ChromaDB` (Vector Store).
+
+### Models & Tools
+*   **LLM**: `qwen2.5:1.5b` (**Local Ollama**). chosen for speed and efficiency on local hardware.
+*   **OCR (Image-to-Text)**: `PaddleOCR` (Local CPU mode).
+*   **ASR (Audio-to-Text)**: `OpenAI Whisper` (Base model, Local).
+*   **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`.
+*   **Math Engine**: `SymPy` (Symbolic Python) & `NumPy`.
 
 ---
 
