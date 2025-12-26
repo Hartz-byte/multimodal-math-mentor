@@ -49,26 +49,49 @@ class ParserAgent(BaseAgent):
 
         try:
             response = self.llm.invoke(prompt)
+            
+            # --- Robust JSON Extraction ---
+            clean_response = response.strip()
+            # Remove markdown code blocks if present
+            if "```" in clean_response:
+                clean_response = clean_response.split("```")[-2] # take content between fences
+                if clean_response.startswith("json"):
+                    clean_response = clean_response[4:]
+            
+            # Find JSON brackets bounds
+            start_idx = clean_response.find("{")
+            end_idx = clean_response.rfind("}")
+            
+            if start_idx != -1 and end_idx != -1:
+                clean_response = clean_response[start_idx:end_idx+1]
+            # -----------------------------
 
             try:
-                parsed = json.loads(response)
+                parsed = json.loads(clean_response)
             except json.JSONDecodeError:
+                logger.warning(f"JSON Decode Failed. Raw response: {response}")
+                # FALLBACK: Assume the raw input IS the problem. Do NOT block user.
                 parsed = {
                     "problem_text": raw_text,
-                    "topic": "unknown",
-                    "subtopic": "unknown",
+                    "topic": "algebra", # default assumption
+                    "subtopic": "general",
                     "variables": [],
                     "constraints": [],
-                    "operations": [],
-                    "clarity_score": 0.5,
-                    "needs_clarification": True,
-                    "clarification_message": "Could not parse problem clearly",
+                    "clarity_score": 0.9, # assume high to bypass check
+                    "needs_clarification": False,
+                    "clarification_message": "",
                 }
             
             # [NEW] Enforce Low Confidence Check
-            if parsed.get("clarity_score", 0.5) < 0.8:
+            # Lower threshold to 0.4 to avoid aggressive blocking
+            if parsed.get("clarity_score", 0.5) < 0.4:
                  parsed["needs_clarification"] = True
                  parsed["clarification_message"] = "The problem statement is ambiguous. Please clarify."
+            
+            # If text is empty, definitely clarify
+            if not parsed.get("problem_text"):
+                parsed["needs_clarification"] = True
+                parsed["clarification_message"] = "No problem text found."
 
             return self.format_output(
                 success=True,

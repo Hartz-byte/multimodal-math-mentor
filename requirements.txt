@@ -46,3 +46,5 @@ python-dateutil==2.9.0
 # Development & Testing
 pytest==8.3.2
 black==24.10.0
+
+intel-openmp

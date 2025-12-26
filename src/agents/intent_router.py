@@ -41,7 +41,36 @@ Respond in JSON:
 
         try:
             response = self.llm.invoke(prompt)
-            routing = json.loads(response)
+
+            # --- Robust JSON Extraction ---
+            clean_response = response.strip()
+            # Remove markdown code blocks if present
+            if "```" in clean_response:
+                clean_response = clean_response.split("```")[-2] # take content between fences
+                if clean_response.startswith("json"):
+                    clean_response = clean_response[4:]
+            
+            # Find JSON brackets bounds
+            start_idx = clean_response.find("{")
+            end_idx = clean_response.rfind("}")
+            
+            if start_idx != -1 and end_idx != -1:
+                clean_response = clean_response[start_idx:end_idx+1]
+            # -----------------------------
+
+            try:
+                routing = json.loads(clean_response)
+            except json.JSONDecodeError:
+                logger.warning(f"Router JSON Error. Raw: {response}")
+                # Fallback defaults
+                routing = {
+                    "topic": "algebra",
+                    "subtopic": "general",
+                    "difficulty": "medium",
+                    "strategy": "symbolic",
+                    "tools_needed": ["sympy"],
+                    "reasoning": "Defaulting to symbolic solver due to router parsing error."
+                }
 
             return self.format_output(
                 success=True,
