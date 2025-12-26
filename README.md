@@ -23,7 +23,7 @@ An advanced, reliable AI-powered Math Mentor application capable of solving JEE-
 *   **Database**: `SQLite` (Structured Metadata) + `ChromaDB` (Vector Store).
 
 ### Models & Tools
-*   **LLM**: `qwen2.5:1.5b` (via **Ollama**). chosen for speed and efficiency on local hardware.
+*   **LLM**: `qwen2.5:1.5b` (**Local Ollama**). chosen for speed and efficiency on local hardware.
 *   **OCR (Image-to-Text)**: `PaddleOCR` (Local CPU mode).
 *   **ASR (Audio-to-Text)**: `OpenAI Whisper` (Base model, Local).
 *   **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`.
@@ -77,14 +77,14 @@ ollama pull qwen2.5:1.5b
 
 ### 2. Clone Repository
 ```bash
-git clone <repository_url>
+git clone https://github.com/Hartz-byte/multimodal-math-mentor.git
 cd multimodal-math-mentor
 ```
 
 ### 3. Environment Setup
 Create a virtual environment:
 ```bash
-python -m venv venv
+py -3.10 -m venv venv
 # Windows
 .\venv\Scripts\activate
 # Linux/Mac
@@ -154,3 +154,20 @@ multimodal-math-mentor/
 *   **Ollama Error**: Ensure `ollama serve` is running.
 *   **DLL / Torch Error**: Run the specific `pip install torch ... --index-url .../cpu` command again.
 *   **Memory Issues**: The app uses `qwen2.5:1.5b` (approx 1.5GB VRAM/RAM). If crashing, ensure you have at least 8GB System RAM.
+
+---
+
+## 🛑 Challenges & Deployment Constraints
+
+During the development of this application, several constraints influenced the architectural choices:
+
+### 1. The Challenge of "Free Tier" Deployment
+This application is designed as a **Production-Grade Local AI System**, using strictly open-source, locally hosted models for privacy and cost-efficiency.
+*   **Model Size**: The combination of `Qwen2.5:1.5b` (LLM), `PaddleOCR` (Vision), `Whisper` (Audio), and `ChromaDB` (Embeddings) requires approximately **4GB - 6GB of RAM** to run smoothly.
+*   **Cloud Constraints**: Standard free-tier platforms (Streamlit Community Cloud, Vercel, Render Free) typically limit RAM to **1GB or 512MB**, which causes immediate OOM (Out of Memory) crashes when loading these models.
+
+### 2. Dependency Conflicts (Windows vs Linux)
+*   **PyTorch**: We faced significant issues with PyTorch pulling CUDA (GPU) versions by default on Windows, leading to `WinError 127` (Missing DLLs) and massive binary sizes (>3GB).
+*   **Solution**: We explicitly enforce **CPU-only PyTorch** in the setup instructions to ensure stability and reasonable package size.
+
+> **Deployment Note**: Because of these hardware requirements, this project is demonstrated as a **Locally Hosted Application**. To deploy this to the cloud, one would need a persistent VPS with at least 8GB RAM (e.g., AWS EC2 t3.large or Railway Pro) or switch the Local LLM to a paid API (e.g., OpenAI/Groq).
