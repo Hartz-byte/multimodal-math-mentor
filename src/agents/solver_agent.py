@@ -182,25 +182,37 @@ Format your response in clear sections."""
     def _sympy_solver(self, equation: str) -> str:
         """Solve equation symbolically"""
         try:
-            from sympy import symbols, Eq, solve, sympify
+            from sympy import symbols, Eq, solve
+            from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
+            import re
             
-            # Auto-detect variable
-            # Use 'x' by default, or find the first alphabet char
-            # But let's stick to x, y, z...
-            # Better: let sympify handle it, but we need to define symbols.
-            # A simple approach for this assignment: Assume 'x' is the variable if not specified,
-            # or extract all symbols.
+            # --- 1. Pre-processing / Cleaning ---
+            clean_eqn = equation.lower()
+            for trash in ["solve for x:", "solve for", "solve:", "calculate:", "find x:", "equation:"]:
+                clean_eqn = clean_eqn.replace(trash, "")
             
-            # Handle equality "="
-            if "=" in equation:
-                lhs_str, rhs_str = equation.split("=")
+            # Replace unicode powers
+            clean_eqn = clean_eqn.replace("²", "**2").replace("³", "**3")
+            
+            # Normalize equality
+            sanitized_eqn = clean_eqn.strip().replace("==", "=")
+            
+            # Transformations for implicit multiplication (e.g. "5x" -> "5*x")
+            transformations = (standard_transformations + (implicit_multiplication_application,))
+            
+            # --- 2. Splitting LHS = RHS ---
+            if "=" in sanitized_eqn:
+                lhs_str, sep, rhs_str = sanitized_eqn.partition("=")
             else:
-                lhs_str, rhs_str = equation, "0"
+                lhs_str, rhs_str = sanitized_eqn, "0"
             
-            lhs = sympify(lhs_str)
-            rhs = sympify(rhs_str)
+            # --- 3. Solving ---
+            # Use parse_expr instead of sympify to handle "5x"
+            # Note: parse_expr might interpret "x" as a symbol automatically
+            lhs = parse_expr(lhs_str, transformations=transformations)
+            rhs = parse_expr(rhs_str, transformations=transformations)
             
-            # Find symbols in the expression
+            # Find symbols
             free_symbols = lhs.free_symbols.union(rhs.free_symbols)
             if not free_symbols:
                 return "No variables found"
@@ -208,8 +220,9 @@ Format your response in clear sections."""
             # Solve
             sol = solve(Eq(lhs, rhs), list(free_symbols))
             return str(sol)
+            
         except Exception as e:
-            return f"Symbolic solving error: {str(e)}"
+            return f"Symbolic solving error: {str(e)} \n(Input: {equation})"
     
     def _numpy_operations(self, operation: str) -> str:
         """Perform numpy operations"""

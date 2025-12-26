@@ -17,31 +17,34 @@ class ParserAgent(BaseAgent):
     async def execute(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse problem into structured format."""
 
-        raw_text = input_data.get("text", "")
-        input_mode = input_data.get("mode", "text")
+        # raw_text = input_data.get("text", "")
+        # input_mode = input_data.get("mode", "text")
+        raw_text = input_data.get("problem_text", "")
+        input_mode = input_data.get("mode", "problem_text")
 
         prompt = f"""
-        You are a data extractor. Extract the math problem from the user input.
+        You are a data extraction system.
         
-        Input:
-        {raw_text}
+        TASK: Extract the math problem from the INPUT TEXT below.
         
-        Rules:
-        1. "problem_text" MUST be the EXACT problem from input. Do not paraphrase. Do not invent.
-        2. Identify the topic (algebra, arithmetic, calculus, etc).
+        INPUT TEXT:
+        "{raw_text}"
         
-        Respond in JSON format:
+        INSTRUCTIONS:
+        1. "problem_text" field must contain the EXACT content of INPUT TEXT. Do not paraphrase.
+        2. Assign a "clarity_score" between 0.0 and 1.0 (1.0 = perfectly clear).
+        
+        Respond in JSON:
         {{
           "problem_text": "...",
           "topic": "...",
           "subtopic": "...",
-          "variables": ["x"],
+          "variables": [],
           "constraints": [],
           "needs_clarification": false,
-          "clarification_message": ""
+          "clarification_message": "",
+          "clarity_score": 0.95
         }}
-        
-        Only respond with valid JSON.
         """.strip()
 
         try:
@@ -61,6 +64,11 @@ class ParserAgent(BaseAgent):
                     "needs_clarification": True,
                     "clarification_message": "Could not parse problem clearly",
                 }
+            
+            # [NEW] Enforce Low Confidence Check
+            if parsed.get("clarity_score", 0.5) < 0.8:
+                 parsed["needs_clarification"] = True
+                 parsed["clarification_message"] = "The problem statement is ambiguous. Please clarify."
 
             return self.format_output(
                 success=True,

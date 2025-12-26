@@ -1,5 +1,7 @@
 # python.exe -m pip install --upgrade pip
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
 
 # Core Framework
 langchain==0.2.15
