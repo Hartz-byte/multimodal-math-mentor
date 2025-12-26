@@ -47,6 +47,68 @@ The system uses a directed graph (Graph Architecture) where problems pass throug
     *   *Confidence*: If verification < 75%, flags for human review.
 7.  **Explainer Agent**: Converts the technical steps into a student-friendly guide with "Key Insights".
 
+### 📊 System Architecture Diagram
+
+```mermaid
+graph TD
+    %% Nodes
+    User([User Input])
+    subgraph "Input Layer"
+        Img[Image / PaddleOCR]
+        Aud[Audio / Whisper]
+        Txt[Text]
+    end
+    
+    subgraph "Orchestration (LangGraph)"
+        Parse[Parser Agent]
+        Route[Intent Router]
+        Ret[RAG Retriever]
+        
+        subgraph "Solving Engine"
+            Solve[Solver Agent]
+            Tool{Use Tool?}
+            SymPy[SymPy / Python]
+        end
+        
+        Verify[Verifier Agent]
+        Explain[Explainer Agent]
+    end
+    
+    subgraph "Persistence"
+        Mem[(SQLite DB)]
+        Vec[(Chroma Vector DB)]
+        FB[Feedback Loop]
+    end
+    
+    %% Flows
+    User --> Img & Aud & Txt
+    Img & Aud & Txt --> Parse
+    
+    Parse -- "Success" --> Route
+    Parse -- "Ambiguous" --> HITL_P[HITL: Clarify]
+    HITL_P --> Parse
+    
+    Route --> Ret --> Solve
+    
+    Solve --> Tool
+    Tool -- "Yes" --> SymPy --> Solve
+    
+    Solve --> Verify
+    Verify -- "Pass" --> Explain
+    Verify -- "Low Conf" --> HITL_V[HITL: Human Review]
+    HITL_V --> Mem
+    
+    Explain --> User
+    
+    %% Feedback Learning
+    User -- "Vote Correct" --> Mem
+    User -- "Vote Incorrect" --> FB
+    FB -- "Corrected logic" --> Mem
+    
+    %% Memory Retrieval
+    Mem -. "Few-Shot Examples" .-> Solve
+```
+
 ---
 
 ## 🧠 Memory & Self-Learning Logic
