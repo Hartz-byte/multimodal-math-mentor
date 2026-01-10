@@ -233,3 +233,11 @@ This application is designed as a **Production-Grade Local AI System**, using st
 *   **Solution**: We explicitly enforce **CPU-only PyTorch** in the setup instructions to ensure stability and reasonable package size.
 
 > **Deployment Note**: Because of these hardware requirements, this project is demonstrated as a **Locally Hosted Application**. To deploy this to the cloud, one would need a persistent VPS with at least 8GB RAM (e.g., AWS EC2 t3.large or Railway Pro) or switch the Local LLM to a paid API (e.g., OpenAI/Groq).
+
+---
+
+## ⭐️ Give it a Star
+
+If you found this repo helpful or interesting, please consider giving it a ⭐️. It motivates me to keep learning and sharing!
+
+---
